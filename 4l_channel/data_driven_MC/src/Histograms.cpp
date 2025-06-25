@@ -3,6 +3,7 @@
 #include "CMS_lumi.h"
 #include <TROOT.h>
 #include <sstream>
+#include <iomanip> // std::setprecision
 
 using namespace std;
 
