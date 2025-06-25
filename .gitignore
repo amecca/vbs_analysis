@@ -1,4 +1,5 @@
 # Intermediate and temporary files
+*.o
 *.d
 *.so
 *.root
