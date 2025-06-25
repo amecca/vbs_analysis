@@ -1,0 +1,12 @@
+# Intermediate and temporary files
+*.d
+*.so
+*.root
+*.pcm
+*.rootmap
+*.cmake
+*.pyc
+__init__.py
+
+# Emacs backups
+*.*~
