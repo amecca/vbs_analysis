@@ -60,13 +60,13 @@ int main( int argc, char *argv[] ){
         //if (year == 2017) c_constant = 2.3;
 	//if (year == 2018) c_constant = 2.3; 
         
-	TFile* f_ = TFile::Open("/afs/cern.ch/work/c/covarell/vbs2017/CMSSW_10_2_15_slc7/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root");
+	TFile* f_ = TFile::Open("$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root");
 	TSpline3* ts = (TSpline3*)(f_->Get("sp_gr_varReco_Constant_Smooth")->Clone());
 	f_->Close();
 
 	candTree data(t);
 	Long64_t nentries = data.fChain->GetEntries();
-	cout<< nentries<<endl;
+	cout << "INFO: total entries in the tree chain = " << nentries << endl;
 	data.fChain->SetBranchStatus("*", 0);
 	data.fChain->SetBranchStatus("DiJetMass", 1);
         data.fChain->SetBranchStatus("DiJetDEta", 1);
@@ -137,7 +137,7 @@ int main( int argc, char *argv[] ){
 	for(Long64_t jentry=0; jentry<nentries;jentry++){
 		data.fChain->GetEntry(jentry);
 		if(jentry%1000==0)
-			cout<< jentry<<endl;
+			cout << "INFO: processing entry " << jentry << endl;
 
 		if ( !data.CRflag ) continue;
 		if ( !test_bit(data.CRflag, CRZLLss) ) continue;
