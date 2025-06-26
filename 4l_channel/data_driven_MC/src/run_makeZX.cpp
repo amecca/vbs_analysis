@@ -162,7 +162,9 @@ int main( int argc, char *argv[] ){
 		// no deta cut
 		// if( data.ZZMass > 160  && data.DiJetMass > 100 && data.nExtraLep==0 && (((data.nCleanedJetsPt30==2||data.nCleanedJetsPt30==3)&&data.nCleanedJetsPt30BTagged_bTagSF<=1) ||(data.nCleanedJetsPt30>=4&&data.nCleanedJetsPt30BTagged_bTagSF==0)) ){
 		// old fiducial region
-		if(data.DiJetMass>100 && data.ZZMass > 180 && data.nCleanedJetsPt30>1 && data.Z1Mass < 120 && data.Z1Mass > 60 && data.Z2Mass < 120 && data.Z2Mass > 60) {
+		if(data.DiJetMass>100 && data.ZZMass > 180 && data.nCleanedJetsPt30>1 &&
+		   data.Z1Mass < 120 && data.Z1Mass > 60 &&
+		   data.Z2Mass < 120 && data.Z2Mass > 60) {
 
 			if (enriched == 1 && (data.DiJetMass < 400 || fabs(data.DiJetDEta) < 2.4)) continue;
 			if (enriched == 2 && (data.DiJetMass < 400 || fabs(data.DiJetDEta) < 5.0)) continue;
@@ -186,14 +188,20 @@ int main( int argc, char *argv[] ){
 			else if (njet == 4) njet4++;
 			else njet5p++;
 			//}
-			weight = _fs_ROS_SS.at(_current_final_state)*FR->GetFakeRate(data.LepPt->at(2),data.LepEta->at(2),data.LepLepId->at(2))*FR->GetFakeRate(data.LepPt->at(3),data.LepEta->at(3),data.LepLepId->at(3));
+			weight = _fs_ROS_SS.at(_current_final_state) *
+			  FR->GetFakeRate(data.LepPt->at(2),data.LepEta->at(2),data.LepLepId->at(2)) *
+			  FR->GetFakeRate(data.LepPt->at(3),data.LepEta->at(3),data.LepLepId->at(3));
 			// cout << "passed " << njet << " " << _current_final_state << " " << FR->GetFakeRate(data.LepPt->at(2),data.LepEta->at(2),data.LepLepId->at(2)) << " " << FR->GetFakeRate(data.LepPt->at(3),data.LepEta->at(3),data.LepLepId->at(3)) << " " << weight << endl;
 			//kinematic variable
 			float c_mzz = c_constant*ts->Eval(data.ZZMass);
-			dbkg_kin = data.p_JJVBF_BKG_MCFM_JECNominal / ( data.p_JJVBF_BKG_MCFM_JECNominal + data.p_JJQCD_BKG_MCFM_JECNominal*c_mzz );
+			dbkg_kin = data.p_JJVBF_BKG_MCFM_JECNominal /
+			  ( data.p_JJVBF_BKG_MCFM_JECNominal + data.p_JJQCD_BKG_MCFM_JECNominal*c_mzz );
 
 
-			dbkg = data.p_GG_SIG_ghg2_1_ghz1_1_JHUGen*data.p_m4l_SIG / ( data.p_m4l_SIG*data.p_GG_SIG_ghg2_1_ghz1_1_JHUGen + data.p_m4l_BKG*data.p_QQB_BKG_MCFM*getDbkgkinConstant(data.Z1Flav*data.Z2Flav,data.ZZMass) );
+			dbkg = data.p_GG_SIG_ghg2_1_ghz1_1_JHUGen*data.p_m4l_SIG /
+			  ( data.p_m4l_SIG*data.p_GG_SIG_ghg2_1_ghz1_1_JHUGen +
+			    data.p_m4l_BKG * data.p_QQB_BKG_MCFM * getDbkgkinConstant(data.Z1Flav*data.Z2Flav,data.ZZMass)
+			    );
 			ZZMass_new= data.ZZMass;
 			dijmass_new= data.DiJetMass;
 			dijeta_new= data.DiJetDEta;
