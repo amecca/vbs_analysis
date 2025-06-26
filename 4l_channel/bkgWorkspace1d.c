@@ -132,7 +132,7 @@ void dosomething(TString chan="2e2mu", int year=2016, int enriched = 0){
 	//zx
 	TChain *t=new TChain("candTree");
 	//t->Add("/afs/cern.ch/work/c/cthorbur/VBF_ANALYSIS/CMSSW_8_0_24_patch1new/src/HZZ4l-plotter/ZXinput_mjj.root");
-        sprintf(filename,"/afs/cern.ch/work/c/covarell/vbs2017/CMSSW_8_0_26_patch1new/src/data_driven_MC/ZX%d_noCut%s.root", year,theExtra.c_str());
+        snprintf(filename, 300, "$CMSSW_BASE/src/data_driven_MC/ZX%d_noCut%s.root", year, theExtra.c_str());
 	t->Add(filename);
 	TH1F* zx1d = new TH1F("zx1d","",nBinsTempl,0.,1.);
 	t->Draw("dbkg_kin>>zx1d","(dbkg_kin > 0.)*weight");   // use the same for 3 final states (not enough stats)

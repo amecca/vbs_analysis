@@ -1,6 +1,6 @@
 void zx(int year = 2016){
         char filename[300];
-        sprintf(filename,"/afs/cern.ch/work/c/covarell/vbs2017/CMSSW_8_0_26_patch1/src/data_driven_MC/ZX%d.root", year);
+        snprintf(filename, 300, "$CMSSW_BASE/src/data_driven_MC/ZX%d.root", year);
 	TFile *f = new TFile("template/root_output_files/zx.root","recreate");
 	TChain *t=new TChain("candTree");
 	//t->Add("/afs/cern.ch/work/c/cthorbur/VBF_ANALYSIS/CMSSW_8_0_24_patch1/src/HZZ4l-plotter/ZXinput_mjj.root");
