@@ -1,31 +1,23 @@
 The repository contains the principal files used in the analysis.
 
-<b> 4l channel, ZX data driven MC </b>
+## Installation
+It can be used either as a standalone package, or in the same area used for
+[ZZAnalysis](https://github.com/CJLST/ZZAnalysis).
+Follow the instructions there, and then clone this repository in the `src/`
+folder of the CMSSW area:
+```
+cd $CMSSW_BASE/src
+git clone git@github.com:covarell/vbs_analysis.git
+```
+If you have not setup an SSH key, you can clone the repository using HTTPS:
+`git clone https://github.com/covarell/vbs_analysis.git`
 
-For this part the following CMSSW version was used: CMSSW_8_0_26_patch1
+## 4l channel, ZX data driven MC
 
-The folder data_driven_MC must be included in the src directory. The discriminant is defined in src/run_makeZX.cpp 
-and all changes must be done in this file.
+The folder `data_driven_MC` has a [README](4l_channel/data_driven_MC/README.md)
+with the relevant instructions.
 
-The following instructions are necessary to run:
-
-cd ext
-
-sh compile_ext.sh
-
-cd ..
-
-source set_library.sh
-
-make run_makeZX
-
-./run_makeZX &lt;year&gt; &lt;enrichment&gt;
-
-The enrichment variable refers to the selection: 0 = baseline, 1 = VBS-enriched (loose), 2 = VBS-enriched (tight with DeltaEta), 3 = background enriched, 4 = tighter pTjet cut (50 GeV), 5 = VBS-enriched (tight with mjj). 
-
-The necessary variables (ZZMass, dbkg_kin, weight etc.) will be stored in the file ZX(+suffix).root
-
-<b> Main analysis </b>
+## Main analysis
 
 plotterAndTemplateMaker.c -> The file reads 4l MC + data (from relevant repositories), together with the data driven zx component, contained in the ZX(+suffix).root file. It performs relevant selection, mela cuts, kin_variable generation. The output is:
 - 1D pictures portraying all contributions (&lt;directory&gt;/&lt;variable&gt;-allaMCatNLO-&lt;year&gt;.png)
@@ -49,7 +41,7 @@ The code is run with:
 
 source runbkg.sh (in bash)
 
-<b> Combine </b>
+## Combine
 
 All cards can be found in the COMBINATION_FOLDER, with sub-directory 4l. Use CMSSW 10_2_13 for this part.
 
