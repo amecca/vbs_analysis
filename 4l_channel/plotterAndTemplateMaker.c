@@ -195,9 +195,9 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	float c_constant = 14.0;    //8.5;
         // if (year == 2017) c_constant = 3.5;
 	// if (year == 2018) c_constant = 3.5; 
-	TFile* f_ = TFile::Open("$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root");
-	TSpline3* ts = (TSpline3*)(f_->Get("sp_gr_varReco_Constant_Smooth")->Clone());
-	f_->Close();
+	TFile f_("$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root");
+	TSpline3* ts = (TSpline3*)(f_.Get("sp_gr_varReco_Constant_Smooth")->Clone());
+	f_.Close();
 
         // find available samples  
 	int nSamp = 0;  
@@ -246,8 +246,8 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	float dbkg_kin, theVar; 
 	
 	//output branches
-	TTree *tnew[5]; 
 	TFile *fnew[5];
+	TTree *tnew[5];
 	//template declarations (1D) 
 	TH1F *temp_1d_4e[5];
 	TH1F *temp_1d_4mu[5];
@@ -270,6 +270,7 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	  }
 	  fnew[it] = new TFile(filename,"recreate");
 	  tnew[it] = new TTree("SelectedTree","SelectedTree");
+
 	  tnew[it]->Branch("mreco",&ZZMass,"mreco/F");
 	  tnew[it]->Branch("dbkg_kin",&dbkg_kin,"dbkg_kin/F");
 	  tnew[it]->Branch("weight",&weight,"weight/F");
@@ -289,10 +290,16 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	for(int is = 0; is < nSamp-1; is++){
 
 	  //print cycle
-	  std::cout << endl << is << endl;
-	  
-          TFile* input_file = TFile::Open(rootname[is].Data()); 
-	  TH1F *hCounters= (TH1F*)input_file->Get("ZZTree/Counters");
+	  std::cout << '\n' << Form("INFO: Processing sample #%d (%s)", is, rootname[is].Data()) << std::endl;
+
+	  TFile input_file(rootname[is].Data());
+	  if(! input_file.IsOpen()){
+	    std::cerr << Form("WARNING: failed to open file \"%s\"; skip it...\n", input_file.GetName());
+	    continue;
+	  }
+	  else
+	    std::cout << Form("DEBUG: opened \"%s\"", input_file.GetName());
+	  TH1F *hCounters= (TH1F*)input_file.Get("ZZTree/Counters");
 	  float gen_sum_weights = hCounters->GetBinContent(40);
 	  std::cout<<endl<<is<<"  "<< gen_sum_weights<<endl;
 	  
