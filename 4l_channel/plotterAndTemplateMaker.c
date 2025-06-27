@@ -1,7 +1,24 @@
 // #include "external_cConstants.h"
+#include <memory>
+#include <iostream>
+#include <fstream>
+
 #include <TSpline.h>
 #include <TString.h>
-#include <memory>
+#include <TH2.h>
+#include <TH1.h>
+#include <TPad.h>
+#include <THStack.h>
+#include <TStyle.h>
+#include <TFile.h>
+#include <TTree.h>
+#include <TChain.h>
+#include <TCanvas.h>
+#include <TLegend.h>
+#include <TLine.h>
+
+using std::cout;
+using std::endl;
 
 TH2F* rebinTemplate(TH2F* orig, int year=2016, int itype=0) {
 
@@ -12,7 +29,10 @@ TH2F* rebinTemplate(TH2F* orig, int year=2016, int itype=0) {
 
   TH2F* tempt = (TH2F*)orig->Clone();
    for(int binx=0;binx<tempt->GetXaxis()->GetNbins();binx++){
-     double inttmp1 = tempt->Integral(binx+1,binx+1);
+     /* A.M. I think that Meng was trying to take the integral on a "slice" with
+	constant x of the TH2, since the original line was
+	double inttmp1 = tempt->Integral(binx+1,binx+1); */
+     double inttmp1 = tempt->Integral(binx+1, binx+1, 0, -1);
      for(int biny=0;biny<tempt->GetNbinsY();biny++){
 	if(inttmp1!=0 )
 	  tempt->SetBinContent(binx+1, biny+1, tempt->GetBinContent(binx+1,biny+1)/inttmp1);
@@ -154,7 +174,7 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	  sprintf(filename,"httzwzz_em_%d",iv); httzwzz_em[iv] = new TH1F(filename,"",bins[iv],xmin[iv],xmax[iv]);//ttzwzz e mu
 	}   
 	gStyle->SetPalette(1);
-	TFile *input_file;
+
         int nbins=17;
 	double xbin[18]={
 	  160,166,170,176,182,188,194,
@@ -209,7 +229,8 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	//additional and output variable declarations
 	float weight, weight_up, weight_dn;
 	float weight_vbf, weight_vbf_up, weight_vbf_dn;
-	int chan,Nvtx;
+	int chan;
+	short Nvtx;
 	int vbfcate = 0;
 	float dbkg_kin, theVar; 
 	
