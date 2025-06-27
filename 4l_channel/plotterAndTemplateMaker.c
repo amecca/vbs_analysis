@@ -516,7 +516,7 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	//ZX CONTRIBUTION
 	  
 	TChain *tqqzz_zx= new TChain("candTree");
-	snprintf(filename, 300, "$CMSSW_BASE/src/data_driven_MC/ZX%d_noCut%s.root", year, theExtra.c_str());
+	snprintf(filename, 300, "$CMSSW_BASE/src/vbs_analysis/4l_channel/data_driven_MC/ZX%d_noCut%s.root", year, theExtra.c_str());
 	tqqzz_zx->Add(filename);
 	
 	//histogram declaration
