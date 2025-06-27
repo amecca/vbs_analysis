@@ -16,6 +16,7 @@
 #include <TCanvas.h>
 #include <TLegend.h>
 #include <TLine.h>
+#include <TROOT.h>
 
 using std::cout;
 using std::endl;
@@ -71,6 +72,8 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
        //enriched = 2 : super-VBS-enriched
        //enriched = 3 : bkgd enriched
        //enriched = 4 : ptjet > 50 GeV
+
+        gROOT->SetBatch();
 
         float lumi = 35.9;
         if (year == 2017) lumi = 41.5;
