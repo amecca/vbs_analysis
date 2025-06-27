@@ -21,6 +21,14 @@
 using std::cout;
 using std::endl;
 
+/* Module constants, in an anonymous namespace */
+namespace {
+  static const char TEMPLDIR[] = "template/root_output_files";
+  static const char PLOTDIR [] = "template/plots";
+  static const char OUTDIR  [] = "noScaleZX";
+}
+
+
 TH2F* rebinTemplate(TH2F* orig, int year=2016, int itype=0) {
 
   char filename[300];    char pname[30];
@@ -56,7 +64,7 @@ TH2F* rebinTemplate(TH2F* orig, int year=2016, int itype=0) {
     }
 
    result->Draw("colz");
-   sprintf(filename,"template/plots/%s_%s_%d.png",orig->GetName(),pname,year);
+   sprintf(filename,"%s/%s_%s_%d.png", PLOTDIR, orig->GetName(), pname, year);
    gPad->Print(filename);
    return result;    
 }
@@ -250,11 +258,16 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	TH2F *temp_zz_2e2mu[5];
 
 	for (int it=0; it < 5; it++) {
-	  if (it==0) sprintf(filename,"template/root_output_files/qqzz_Moriond_%d%s.root",year,theExtra.c_str()); 
-	  if (it==1) sprintf(filename,"template/root_output_files/ggzz_Moriond_%d%s.root",year,theExtra.c_str()); 
-	  if (it==2) sprintf(filename,"template/root_output_files/vbs_Moriond_%d%s.root",year,theExtra.c_str()); 
-	  if (it==3) sprintf(filename,"template/root_output_files/data_%d%s.root",year,theExtra.c_str()); 
-	  if (it==4) sprintf(filename,"template/root_output_files/ttzwzz_Moriond_%d%s.root",year,theExtra.c_str()); 
+	  int err = 0;
+	  if      (it==0) err = snprintf(filename, 300, "%s/qqzz_Moriond_%d%s.root"  , TEMPLDIR, year, theExtra.c_str());
+	  else if (it==1) err = snprintf(filename, 300, "%s/ggzz_Moriond_%d%s.root"  , TEMPLDIR, year, theExtra.c_str());
+	  else if (it==2) err = snprintf(filename, 300, "%s/vbs_Moriond_%d%s.root"   , TEMPLDIR, year, theExtra.c_str());
+	  else if (it==3) err = snprintf(filename, 300, "%s/data_%d%s.root"          , TEMPLDIR, year, theExtra.c_str());
+	  else if (it==4) err = snprintf(filename, 300, "%s/ttzwzz_Moriond_%d%s.root", TEMPLDIR, year, theExtra.c_str());
+	  if(err < 0 || err >= 300){
+	    std::cerr << "ERROR: the buffer char* filename is not large enough for format" << __LINE__ << std::endl;
+	    exit(1);
+	  }
 	  fnew[it] = new TFile(filename,"recreate");
 	  tnew[it] = new TTree("SelectedTree","SelectedTree");
 	  tnew[it]->Branch("mreco",&ZZMass,"mreco/F");
@@ -799,9 +812,9 @@ void plotterAndTemplateMaker(int year = 2018, int useMCatNLO = 1, int enriched =
 	  
 	  //close and print on file
 	  c1->cd();
-	  if (useMCatNLO == 0) sprintf(filename,"noScaleZX/%s_plot_allPOWHEG_%d%s.png",namegif[iv].c_str(),year,theExtra.c_str());      
-	  if (useMCatNLO == 1) sprintf(filename,"noScaleZX/%s_plot_allMCatNLO_%d%s.png",namegif[iv].c_str(),year,theExtra.c_str());     
-	  if (useMCatNLO == 2) sprintf(filename,"noScaleZX/%s_plot_MCatNLOshape_POWHEGint_%d%s.png",namegif[iv].c_str(),year,theExtra.c_str());
+	  if (useMCatNLO == 0) sprintf(filename,"%s/%s_plot_allPOWHEG_%d%s.png"             , OUTDIR, namegif[iv].c_str(),year,theExtra.c_str());
+	  if (useMCatNLO == 1) sprintf(filename,"%s/%s_plot_allMCatNLO_%d%s.png"            , OUTDIR, namegif[iv].c_str(),year,theExtra.c_str());
+	  if (useMCatNLO == 2) sprintf(filename,"%s/%s_plot_MCatNLOshape_POWHEGint_%d%s.png", OUTDIR, namegif[iv].c_str(),year,theExtra.c_str());
 	  gPad->Print(filename);
 	}
 }
