@@ -7,7 +7,11 @@
 from argparse import ArgumentParser
 import logging
 import json
+import re
+import os
+from subprocess import check_output
 
+from ZZAnalysis.AnalysisStep.readSampleInfo import readSampleDB
 from ZZAnalysis.NanoAnalysis.tools import setConf, getConf, insertAfter
 
 # Check that the checkout recipe has been properly updated
@@ -17,6 +21,8 @@ if(not validateCheckout()):
 
 
 def main(args):
+    args.isMC = True # TODO deduce from file name
+    configure_manual()
     configstatus = configure(args)
     logging.debug("configuration status = %d", configstatus)
     if(configstatus != 0): return configstatus
@@ -47,6 +53,15 @@ def main(args):
     ### Replace JSON
     # p.json =
 
+    ### TEMP - Dump config
+    if(logging.getLogger().isEnabledFor(logging.DEBUG)):
+        try:
+            from ZZAnalysis.NanoAnalysis.tools import _myConf
+        except ImportError as e:
+            logging.warning(e)
+        else:
+            print(json.dumps(_myConf, indent=2))
+
     ### Early stop for --dry-run
     if(args.dry_run): return 0
 
@@ -55,7 +70,45 @@ def main(args):
 
 
 def configure(args):
-    '''Use setConf() depending on the chosen sample and other settings in args'''
+    '''Use setConf() for using variables retrieved from the CSV'''
+
+    csv_files = get_csvs(args)
+    logging.debug('CSVs: %s', csv_files)
+    if(len(csv_files) == 0):
+        logging.critical('0 valid CSV files found')
+        return 1
+
+    for csvfile in csv_files:
+        samplesDB = readSampleDB(csvfile)
+        sampleInfo = samplesDB.get(args.sample, None)
+        if(sampleInfo is not None):
+            logging.debug('found sample %s in %s', args.sample, csvfile)
+            break
+    else:
+        logging.critical('sample "%s" not found in any CSV (tried: %s)', args.sample, csv_files)
+        return 2
+    logging.debug('sampleInfo: %s', sampleInfo)
+
+    setConf('IsMC', args.isMC)
+    setConf('XSEC', float(sampleInfo['crossSection']))
+    setConf('SAMPLENAME', args.sample)
+    for k,v in sampleInfo['::variables'].items():
+        setConf(k, v)
+
+    # Get files from the dataset name
+    das_cmd = ['dasgoclient', '-query', 'file dataset=%s'%(sampleInfo['dataset'])]
+    logging.debug('DAS query: %s', ' '.join(das_cmd))
+    das_out = check_output(das_cmd, encoding='utf-8').strip('\n').split('\n')
+    logging.debug('DAS result (%d): %s', len(das_out), das_out)
+
+    setConf("fileNames", das_out[0:1]) # just the 1st file is sufficient for a test
+
+    return 0
+
+
+def configure_manual():
+    '''Use setConf() for overrides that we always want (or that we just
+    hardcode for simplicity)'''
     ### Customize processing variables.
     #setConf("runMELA", False)
     #setConf("bestCandByMELA", False)
@@ -82,51 +135,51 @@ def configure(args):
 
     setConf("store","root://cms-xrd-global.cern.ch/")
 
-    if(args.sample.startswith("Data")):
-        # 2022 data sample from /MuonEG/Run2022D-PromptNanoAODv10_v1-v1/NANOAOD
-        setConf("IsMC", False)
-        setConf("PD", "any")
-        if(args.sample == "Data2022"):
-            setConf("SAMPLENAME", "test")
-            setConf("TRIGPASSTHROUGH", True)
-            setConf("LEPTON_SETUP", 2022)
-            setConf("fileNames", [
-                "/store/data/Run2022D/MuonEG/NANOAOD/PromptNanoAODv10_v2-v1/50000/68f42f42-3274-46ec-b23d-bfadc13012c2.root",
-            ])
-        else:
-            return 1
 
-    elif(args.sample.startswith("MC")):
-        setConf("IsMC", True)
-        setConf("XSEC", 0.001142)
-        if(args.sample == "MC2022preEE"):
-            setConf("SAMPLENAME", "ZZto4Ljj_EW")
-            setConf("LEPTON_SETUP", 2022)
-            setConf("DATA_TAG", "pre_EE")
-            setConf("fileNames", [
-                "/store/mc/Run3Summer22EENanoAODv12/ZZto4L-2Jets_EW_TuneCP5_13p6TeV_madgraph-pythia8/NANOAODSIM/130X_mcRun3_2022_realistic_postEE_v6-v2/2530000/4f6ffdfe-1ffe-44cb-9632-42d185e1f9a8.root",
-            ])
-        else:
-            return 1
+def get_csvs(args):
+    base_dir_ZZ = '$CMSSW_BASE/src/ZZAnalysis/NanoAnalysis/test/prod/'
+    base_dir_VBS= '$CMSSW_BASE/src/vbs_analysis/4l_channel/test/prod/'
+    filepattern = 'samplesNano_{year}_{DataMC}.csv'
 
-    if(logging.getLogger().isEnabledFor(logging.DEBUG)):
-        try:
-            from ZZAnalysis.NanoAnalysis.tools import _myConf
-        except ImportError as e:
-            logging.warning(e)
-        else:
-            print(json.dumps(_myConf, indent=2))
+    match = re.search(r'(\d+)([^\d].*)?', args.year)
+    year_int, year_era = match.groups()
+    year_int = int(year_int)
+    if(year_era is None): year_era = ''
+    year_era_ZZ = year_era
 
-    return 0
+    # In some cases, in the official samples the year without sub-era refers to "before something happended"
+    # We chose to be clear: "2022" means the whole year, which is the sum "2022preEE + 2022postEE"
+    if(args.isMC):
+        if(year_int==2022):
+           if  (year_era=='preEE' ): year_era_ZZ = ''
+           elif(year_era=='postEE'): year_era_ZZ = 'EE'
+
+    year_ZZ = '%d%s' %(year_int, year_era_ZZ)
+    logging.debug('year (args): %s -> year: %d, era: "%s" -> year_ZZ: "%s"', args.year, year_int, year_era, year_ZZ)
+
+    filename_ZZ = filepattern.format(year=year_ZZ  , DataMC='MC' if args.isMC else 'Data')
+    filename_VBS= filepattern.format(year=args.year, DataMC='MC' if args.isMC else 'Data')
+
+    paths = []
+    for base_dir, filename in [[base_dir_ZZ, filename_ZZ], [base_dir_VBS, filename_VBS]]:
+        filepath = os.path.join(os.path.expandvars(base_dir), filename)
+        if(os.path.exists(filepath)):
+            paths.append(filepath)
+        else:
+            logging.debug('"%s" does not exist', filepath)
+
+    return paths
 
 
 def parse_args():
     parser = ArgumentParser('Run locally the analysis before submitting batch jobs')
-    parser.add_argument('sample', choices=["Data2022", "MC2022preEE"], help='Sample to run on')
+    parser.add_argument('sample', help='Sample to run on')
     parser.add_argument('-d', '--dry-run', action='store_true', help='Configure everything but do not run (for debugging, set --log to INFO or DEBUG)')
     parser.add_argument('-n', '--maxevents', type=int, default=100, help='Max number of events to process. Default: %(default)d.')
+    parser.add_argument('-y', '--year', help='Year, optionally followed by era or specifier (e.g. 2018UL, 2022preEE, etc.)')
     parser.add_argument('--log', dest='loglevel', metavar='LEVEL', default='WARNING', help='Level for the python logging module. Can be either a mnemonic string like DEBUG, INFO or WARNING or an integer (lower means more verbose).')
     args = parser.parse_args()
+
     return args
 
 
