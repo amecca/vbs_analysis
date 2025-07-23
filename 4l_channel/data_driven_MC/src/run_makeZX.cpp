@@ -19,6 +19,16 @@ namespace {
     1.00  //2mu2e
   };
   static const float c_constant = 14.0;
+
+  const char fileFR_2016[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2016.root";
+  const char fileFR_2017[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2017.root";
+  const char fileFR_2018[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2018.root";
+
+  const char fileData_2016[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2016/AllData/ZZ4lAnalysis.root";
+  const char fileData_2017[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2017/AllData/ZZ4lAnalysis.root";
+  const char fileData_2018[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2018/AllData/ZZ4lAnalysis.root";
+
+  const char fileKDconstants[] = "$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root";
 }
 
 int FindFinalStateZX(short Z1Flav, short Z2Flav);
@@ -47,22 +57,21 @@ int main( int argc, char *argv[] ){
 
 	// 2016
 
-	char name[200];
-	if (year == 2016) sprintf(name,"/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2016.root");
-	if (year == 2017) sprintf(name,"/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2017.root");
-	if (year == 2018) sprintf(name,"/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2018.root");
+	const char* fileFR;
+	if (year == 2016) fileFR = fileFR_2016;
+	if (year == 2017) fileFR = fileFR_2017;
+	if (year == 2018) fileFR = fileFR_2018;
 
-	FakeRates *FR = new FakeRates(name);
+	FakeRates *FR = new FakeRates(fileFR);
 
 	TChain *t = new TChain("CRZLLTree/candTree");
-	//2016
-	if (year == 2016) t->Add("/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2016/AllData/ZZ4lAnalysis.root");
-	//2017
-	if (year == 2017) t->Add("/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2017/AllData/ZZ4lAnalysis.root");
-	//2018
-	if (year == 2018) t->Add("/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2018/AllData/ZZ4lAnalysis.root");
+	const char* fileData;
+	if (year == 2016) fileData = fileData_2016;
+	if (year == 2017) fileData = fileData_2017;
+	if (year == 2018) fileData = fileData_2018;
+	t->Add(fileData);
 
-	TFile* f_ = TFile::Open("$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root");
+	TFile* f_ = TFile::Open(fileKDconstants);
 	TSpline3* ts = (TSpline3*)(f_->Get("sp_gr_varReco_Constant_Smooth")->Clone());
 	f_->Close();
 
@@ -116,7 +125,8 @@ int main( int argc, char *argv[] ){
 	float ZZMassErrCorr_new;
 	short njet;
 
-	sprintf(name,"ZX%d_noCut%s.root",year,theExtra.c_str());
+	char name[200];
+	snprintf(name, 200, "ZX%d_noCut%s.root", year, theExtra.c_str());
 	TFile *f = new TFile(name,"recreate");
 	TTree *tnew =new TTree("candTree","");
 	tnew->Branch("dbkg_kin",&dbkg_kin,"dbkg_kin/F");
