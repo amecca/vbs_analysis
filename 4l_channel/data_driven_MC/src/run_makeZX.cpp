@@ -10,6 +10,17 @@
 
 using namespace std;
 
+// Anonymous namespace to hold module-wide constants
+namespace {
+  static const vector<float> _fs_ROS_SS = {
+    1.04, //4mu
+    1.01, //4e
+    1.04, //2e2mu
+    1.00  //2mu2e
+  };
+  static const float c_constant = 14.0;
+}
+
 int FindFinalStateZX(short Z1Flav, short Z2Flav);
 
 int main( int argc, char *argv[] ){
@@ -34,11 +45,6 @@ int main( int argc, char *argv[] ){
 	int njet4 = 0;
 	int njet5p = 0;
 
-	vector<float> _fs_ROS_SS;
-	_fs_ROS_SS.push_back(1.04);//4mu
-	_fs_ROS_SS.push_back(1.01);//4e
-	_fs_ROS_SS.push_back(1.04);//2e2mu
-	_fs_ROS_SS.push_back(1.00);//2mu2e
 	// 2016
 
 	char name[200];
@@ -55,10 +61,6 @@ int main( int argc, char *argv[] ){
 	if (year == 2017) t->Add("/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2017/AllData/ZZ4lAnalysis.root");
 	//2018
 	if (year == 2018) t->Add("/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2018/AllData/ZZ4lAnalysis.root");
-
-	float c_constant = 14.0;
-	//if (year == 2017) c_constant = 2.3;
-	//if (year == 2018) c_constant = 2.3;
 
 	TFile* f_ = TFile::Open("$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root");
 	TSpline3* ts = (TSpline3*)(f_->Get("sp_gr_varReco_Constant_Smooth")->Clone());
