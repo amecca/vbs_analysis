@@ -7,25 +7,23 @@
 # Initial revision: 2025-07-09                                 #
 ################################################################
 
+import os
+import sys
 from argparse import ArgumentParser
 import logging
 
 import ROOT
 from ROOT.RDF import TH1DModel
 
+from ZZAnalysis.NanoAnalysis.tools import setConf
 
-class TFileContext(object):
-    '''Allows using a TFile in a with satatement'''
-    def __init__(self, *args):
-        self.tfile = ROOT.TFile(*args)
-        if(not (self.tfile and self.tfile.IsOpen())):
-            raise FileNotFoundError(args[0] if len(args) > 0 else '')
-
-    def __enter__(self):
-        return self.tfile
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.tfile.Close()
+# Python doesn't like names starting with a digit; to import from modules
+# in "4l_channel" we have a few options:
+# - rename the directory (e.g. to channel_4l)
+# - try to do stuff with importlib
+# - append the absolute path to "4l_channel/python/" to sys.path
+sys.path.append(os.path.realpath('../python'))
+from utils import TFileContext
 
 
 def main(args):
@@ -60,7 +58,7 @@ def parse_args():
                             epilog='outputs ROOT files with histograms. For efficiency, '
                             'the fancy plot formatting is in a separate step')
     parser.add_argument('fname_in', metavar='FILE', help='Input: (post-processed) NanoAOD file')
-    parser.add_argument('-o', '--output', dest='fname_out')
+    parser.add_argument('-o', '--output', default='hists.root', dest='fname_out', metavar='FILE', help='Default: %(default)s')
     parser.add_argument(      '--list', dest='list_columns', action='store_true', help='List the columns present in the input file and exit')
     parser.add_argument('--log', dest='loglevel', metavar='LEVEL', default='WARNING', help='Level for the python logging module. Can be either a mnemonic string like DEBUG, INFO or WARNING or an integer (lower means more verbose).')
 
