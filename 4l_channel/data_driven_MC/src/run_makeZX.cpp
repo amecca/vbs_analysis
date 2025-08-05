@@ -20,13 +20,29 @@ namespace {
   };
   static const float c_constant = 14.0;
 
-  const char fileFR_2016[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2016.root";
-  const char fileFR_2017[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2017.root";
-  const char fileFR_2018[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2018.root";
+  static const std::map<std::string, const char*> fileFRmap_ {
+    {"2016"      , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2016.root"},
+    {"2017"      , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2017.root"},
+    {"2018"      , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/FRfiles/FakeRates_SS_2018.root"},
+    {"2022preEE" , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIII_byZ1Z2/FRfiles/FakeRates_SS_2022.root"},
+    {"2022postEE", "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIII_byZ1Z2/FRfiles/FakeRates_SS_2022EE.root"},
+    {"2022preBPix", nullptr},
+    {"2023postBPix", nullptr},
+    {"2024", nullptr},
+    {"_end", nullptr}
+  };
 
-  const char fileData_2016[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2016/AllData/ZZ4lAnalysis.root";
-  const char fileData_2017[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2017/AllData/ZZ4lAnalysis.root";
-  const char fileData_2018[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2018/AllData/ZZ4lAnalysis.root";
+  static const std::map<std::string, const char*> fileDataMap_ {
+    {"2016"      , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2016/AllData/ZZ4lAnalysis.root"},
+    {"2017"      , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2017/AllData/ZZ4lAnalysis.root"},
+    {"2018"      , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2018/AllData/ZZ4lAnalysis.root"},
+    {"2022preEE" , "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIII_byZ1Z2/240820/2022/Data/AllData_2022.root"},
+    {"2022postEE", "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIII_byZ1Z2/240820/2022EE/Data/AllData_2022EE.root"},
+    {"2022preBPix", nullptr},
+    {"2023postBPix", nullptr},
+    {"2024", nullptr},
+    {"_end", nullptr}
+  };
 
   const char fileKDconstants[] = "$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root";
   const char splineName[] = "sp_gr_varReco_Constant_Smooth";
@@ -36,7 +52,7 @@ int FindFinalStateZX(short Z1Flav, short Z2Flav);
 
 int main( int argc, char *argv[] ){
 
-	int year = atoi(argv[1]);
+	std::string year = argv[1];
 	int enriched = atoi(argv[2]);
 
 	string theExtra = "";
@@ -56,20 +72,12 @@ int main( int argc, char *argv[] ){
 	int njet4 = 0;
 	int njet5p = 0;
 
-	// 2016
 
-	const char* fileFR;
-	if (year == 2016) fileFR = fileFR_2016;
-	if (year == 2017) fileFR = fileFR_2017;
-	if (year == 2018) fileFR = fileFR_2018;
-
+	const char* fileFR = fileFRmap_.at(year);
 	FakeRates *FR = new FakeRates(fileFR);
 
 	TChain *t = new TChain("CRZLLTree/candTree");
-	const char* fileData;
-	if (year == 2016) fileData = fileData_2016;
-	if (year == 2017) fileData = fileData_2017;
-	if (year == 2018) fileData = fileData_2018;
+	const char* fileData = fileDataMap_.at(year);
 	t->Add(fileData);
 
 	TFile* f_ = TFile::Open(fileKDconstants);
@@ -126,7 +134,7 @@ int main( int argc, char *argv[] ){
 	float ZZMassErrCorr_new;
 	short njet;
 
-	const char* name = Form("ZX%d_noCut%s.root", year, theExtra.c_str());
+	const char* name = Form("ZX%s_noCut%s.root", year.c_str(), theExtra.c_str());
 	TFile *f = new TFile(name,"recreate");
 	TTree *tnew =new TTree("candTree","");
 	tnew->Branch("dbkg_kin",&dbkg_kin,"dbkg_kin/F");
