@@ -126,8 +126,7 @@ int main( int argc, char *argv[] ){
 	float ZZMassErrCorr_new;
 	short njet;
 
-	char name[200];
-	snprintf(name, 200, "ZX%d_noCut%s.root", year, theExtra.c_str());
+	const char* name = Form("ZX%d_noCut%s.root", year, theExtra.c_str());
 	TFile *f = new TFile(name,"recreate");
 	TTree *tnew =new TTree("candTree","");
 	tnew->Branch("dbkg_kin",&dbkg_kin,"dbkg_kin/F");
