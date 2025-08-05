@@ -29,6 +29,7 @@ namespace {
   const char fileData_2018[] = "/eos/cms/store/group/phys_higgs/cmshzz4l/cjlst/RunIILegacy/200205_CutBased/Data_2018/AllData/ZZ4lAnalysis.root";
 
   const char fileKDconstants[] = "$CMSSW_BASE/src/ZZAnalysis/AnalysisStep/data/cconstants/SmoothKDConstant_m4l_DjjVBF13TeV.root";
+  const char splineName[] = "sp_gr_varReco_Constant_Smooth";
 }
 
 int FindFinalStateZX(short Z1Flav, short Z2Flav);
@@ -72,7 +73,7 @@ int main( int argc, char *argv[] ){
 	t->Add(fileData);
 
 	TFile* f_ = TFile::Open(fileKDconstants);
-	TSpline3* ts = (TSpline3*)(f_->Get("sp_gr_varReco_Constant_Smooth")->Clone());
+	TSpline3* ts = (TSpline3*)(f_->Get(splineName)->Clone());
 	f_->Close();
 
 	candTree data(t);
