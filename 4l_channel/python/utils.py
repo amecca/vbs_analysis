@@ -37,3 +37,7 @@ class Channel(Enum):
         elif(fs == FinalState.fs4e ): return cls(Channel.ch4e )
         elif(fs==FinalState.fs2e2mu or fs==FinalState.fs2mu2e): return cls(Channel.ch2e2mu)
         else: return cls(Channel.NONE)
+
+
+def clamp(v, lo, hi):
+    return min(max(v, lo), hi)
