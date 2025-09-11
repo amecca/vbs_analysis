@@ -133,3 +133,27 @@ extern "C" float getDbkgkinConstant(int ZZflav, float ZZMass){ // ZZflav==id1*id
 extern "C" float getDbkgConstant(int ZZflav, float ZZMass){
    return getDbkgkinConstant(ZZflav, ZZMass);
 }
+
+extern "C" enum FSLFO get_FSLFO(int Z1Flav, int Z2Flav){
+  FSLFO r = FSLFO_INVALID;
+  int c1 = 0;
+  switch(abs(Z1Flav)){
+  case 121: c1 = 1; break;
+  case 169: c1 = 2; break;
+  default: return r;
+  }
+  switch(abs(Z2Flav)){
+  case 121: r = (c1==1 ? FSLFO_4e : FSLFO_2mu2e); break;
+  case 169: r = (c1==1 ? FSLFO_2mu2e: FSLFO_4mu); break;
+  default: return r;
+  }
+  return r;
+}
+
+extern "C" float get_fs_ROS_SS(FSLFO c){
+  if(c == FSLFO_4mu  ) return 1.04;
+  if(c == FSLFO_4e   ) return 1.01;
+  if(c == FSLFO_2e2mu) return 1.04;
+  if(c == FSLFO_2mu2e) return 1.00;
+  return 1.;
+}
