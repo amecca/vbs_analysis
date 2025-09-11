@@ -8,7 +8,7 @@
 // ROOT
 #include "TFile.h"
 #include "TString.h"
-#include "TGraph.h"
+#include "TH1F.h"
 
 using namespace std;
 
@@ -19,14 +19,18 @@ public:
 	
 	FakeRates( TString );
 	~FakeRates();
-   float GetFakeRate( float, float, int );
-   
-   private:
-   
-   TFile *input_file_FR;
-   
-   TGraph *g_FR_mu_EB, *g_FR_mu_EE, *g_FR_e_EB, *g_FR_e_EE;
+  float getFRval(float pt, float eta, int id) const;
+  float getFRerr(float pt, float eta, int id) const;
+  std::pair<float, float> getFR(float pt, float eta, int id) const;
+  float GetFakeRate(float pt, float eta, int id) const{
+    return getFRval(pt, eta, id);
+  }
 
+protected:
+  const TH1F* get_hist(float, int) const;
+
+private:
+   std::unique_ptr<TH1F> h_m_EB, h_m_EE, h_e_EB, h_e_EE;
 };
 
 #endif
