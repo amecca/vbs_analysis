@@ -1,21 +1,29 @@
 // Include classes
+#include "TGraphErrors.h"
 #include "FakeRates.h"
 
 using namespace std;
+
+// Helper
+TH1F* _h_from_tge(const TGraphErrors&);
 
 // Constructor
 //===============================================
 FakeRates::FakeRates( TString input_file_FR_name )
 {
  
-   input_file_FR = TFile::Open(input_file_FR_name);
+   auto input_file_FR = TFile::Open(input_file_FR_name);
 
    // for Christophe's FR files
-   g_FR_mu_EB = (TGraph*)input_file_FR->Get("FR_SS_muon_EB");
-   g_FR_mu_EE = (TGraph*)input_file_FR->Get("FR_SS_muon_EE");
-   g_FR_e_EB  = (TGraph*)input_file_FR->Get("FR_SS_electron_EB");
-   g_FR_e_EE  = (TGraph*)input_file_FR->Get("FR_SS_electron_EE");
+   auto g_m_EB = (TGraphErrors*)input_file_FR->Get("FR_SS_muon_EB");
+   auto g_m_EE = (TGraphErrors*)input_file_FR->Get("FR_SS_muon_EE");
+   auto g_e_EB = (TGraphErrors*)input_file_FR->Get("FR_SS_electron_EB");
+   auto g_e_EE = (TGraphErrors*)input_file_FR->Get("FR_SS_electron_EE");
 
+   h_m_EB.reset(_h_from_tge(*g_m_EB));
+   h_m_EE.reset(_h_from_tge(*g_m_EE));
+   h_e_EB.reset(_h_from_tge(*g_e_EB));
+   h_e_EE.reset(_h_from_tge(*g_e_EE));
 }
 //===============================================
 
@@ -28,41 +36,87 @@ FakeRates::~FakeRates() {}
 
 
 //==================================================================
-float FakeRates::GetFakeRate(float lep_Pt, float lep_eta, int lep_ID)
-{
-
-   float my_lep_Pt = lep_Pt >= 80. ? 79. : lep_Pt;
-   int   my_lep_ID = abs(lep_ID);
-
-   int bin = 0;
-   if ( my_lep_Pt > 5 && my_lep_Pt <= 7 ) bin = 0;
-   else if ( my_lep_Pt >  7 && my_lep_Pt <= 10 ) bin = 1;
-   else if ( my_lep_Pt > 10 && my_lep_Pt <= 20 ) bin = 2;
-   else if ( my_lep_Pt > 20 && my_lep_Pt <= 30 ) bin = 3;
-   else if ( my_lep_Pt > 30 && my_lep_Pt <= 40 ) bin = 4;
-   else if ( my_lep_Pt > 40 && my_lep_Pt <= 50 ) bin = 5;
-   else if ( my_lep_Pt > 50 && my_lep_Pt <= 80 ) bin = 6;
-   
-   if ( fabs(my_lep_ID) == 11 ) bin = bin-1; // there is no [5, 7] bin in the electron fake rate
-
-   if ( my_lep_ID == 11 )
-   {
-      if ( fabs(lep_eta) < 1.479 )
-         return (g_FR_e_EB->GetY())[bin];
-      else
-         return (g_FR_e_EE->GetY())[bin];
-   }
-   else if ( my_lep_ID == 13 )
-   {
-      if ( fabs(lep_eta) < 1.2 )
-         return (g_FR_mu_EB->GetY())[bin];
-      else
-         return (g_FR_mu_EE->GetY())[bin];
-   }
-   else
-   {
-      cout << "[ERROR] Wrong lepton ID: " << my_lep_ID << endl;
-      return 0;
-   }
+float FakeRates::getFRval(float pt, float eta, int id) const{
+  return getFR(pt, eta, id).first;
 }
-//==================================================================
+
+float FakeRates::getFRerr(float pt, float eta, int id) const{
+  return getFR(pt, eta, id).second;
+}
+
+std::pair<float, float> FakeRates::getFR(float pt, float eta, int id) const{
+  const TH1F* h = get_hist(eta, id);
+  if(!h)
+    return std::make_pair(1., 0.);
+
+  int b = h->FindFixBin(pt);
+  float v = h->GetBinContent(b);
+  float e = h->GetBinError  (b);
+  return std::make_pair(v, e);
+}
+
+const TH1F* FakeRates::get_hist(float eta, int id) const{
+  TH1F* h = nullptr;
+  unsigned int aid = abs(id);
+  float aeta = fabs(eta);
+
+  switch(aid){
+  case 11:
+    h = (aeta < 1.479 ? h_e_EB : h_e_EE).get();
+    break;
+  case 13:
+    h = (aeta < 1.2   ? h_m_EB : h_m_EE).get();
+    break;
+  default:
+    std::cerr << Form("ERROR: unknown lepton id: %d\n", id);
+  }
+  return h;
+}
+
+
+TH1F* _h_from_tge(const TGraphErrors& g){
+  /* Helper function that creates a TH1F based on a TGraphErrors,
+   with N+1 bins and the correct bin content and error*/
+  int n = g.GetN();
+  std::vector<float> edges;  edges .reserve(n+1);
+  std::vector<float> values; values.reserve(n+1);
+  std::vector<float> errors; errors.reserve(n+1);
+
+  for(int i=0; i<n; ++i){
+    float px = g.GetPointX(i);
+    float py = g.GetPointY(i);
+    float ex = g.GetErrorX(i);
+    float ey = g.GetErrorY(i);
+
+    float px_ex = px - ex;
+    if(i > 0){
+      // Check edge consistency with point errors
+      float last = edges.back();
+      if(px_ex - last > 1e-7)
+	std::cerr << Form("WARN (h_from_tge): edge discrepancy: last=%.3e, x-ex=%.3e (diff=%.3e)", last, px_ex, px_ex-last);
+      else // first bin
+	edges.push_back(px_ex);
+      edges.push_back(px + ex);
+      values.push_back(py);
+      errors.push_back(ey);
+    }
+  }
+
+  // allocate on the heap the result, which will be managed by an unique_ptr
+  TH1F* hp = new TH1F(g.GetName(), g.GetTitle(), n, edges.data());
+  TH1F h = *hp; // for convenience
+
+  h.SetDirectory(0); // ROOT deletes TH1 objects created while a TFile is open, when closing it
+  for(int i=0; i<n; ++i){
+    // std::cout << Form("DEBUG: %d - y = %.3g +- %.3g\n", i+1, v, e)
+    h.SetBinContent(i+1, values.at(i));
+    h.SetBinError  (i+1, errors.at(i));
+  }
+  // Set the under/overflow value and error equal to the first/last bin - simplifies getFR
+  h.SetBinContent(0, values[0]);
+  h.SetBinError  (0, errors[0]);
+  h.SetBinContent(n+1, values[-1]);
+  h.SetBinError  (n+1, errors[-1]);
+
+  return hp;
+}
