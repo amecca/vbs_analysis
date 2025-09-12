@@ -52,3 +52,22 @@ def mkhist(df, *model_args, v=None, w='weight'):
     model = TH1DModel(*model_args)
     column = model.fName if v is None else v
     return df.Histo1D(model, column, w)
+
+
+def write_resultmap(hdict):
+    '''
+    Write every histogram in the RResultMap passed as argument to the currently
+    opened TFile (assuming that cd() has already been called)
+    '''
+    logging.debug('keys: %s', hdict.GetKeys())
+    hcentr = hdict['nominal']
+    hcentr.Write()
+    basename = hcentr.GetName()
+    for k in hdict.GetKeys():
+        if(k == "nominal"):
+            continue
+        syst, updn = str(k).split(':')
+        syst = syst.replace('_', '-')
+        outn = '{basename}_{syst}_{updn}'.format(basename=basename, syst=syst, updn=updn)
+        logging.debug('    %s -> (%s, %s) -> %s', k, syst, updn, outn)
+        hdict[k].Write(outn)

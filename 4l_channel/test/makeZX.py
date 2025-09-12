@@ -18,23 +18,14 @@ from ROOT.RDF import TH1DModel
 VariationsFor = ROOT.RDF.Experimental.VariationsFor
 
 sys.path.append(os.path.realpath('../python')) # See nano2hist.py for an explaination
-from utils import TFileContext, FinalState, Channel
-from FRhelper import FRhelper
+from utils import TFileContext, FinalState, Channel, write_resultmap
+from cConstants import get_FSLFO, get_fs_ROS_SS
 
 CUTS = {
     'fid_region': 'ZZ_mass > 180 &&\
 DiJet_mass > 100 && nCleanedJetsPt30 > 1 && \
 ZZ_Z1mass < 120 && ZZ_Z1mass > 60 && \
 ZZ_Z2mass < 120 && ZZ_Z2mass > 60',
-}
-
-
-# Constants specific for this script
-_fs_ROS_SS = {
-    FinalState.fs4mu  : 1.04,
-    FinalState.fs4e   : 1.01,
-    FinalState.fs2e2mu: 1.04,
-    FinalState.fs2mu2e: 1.00
 }
 
 _c_constant = 14.0
@@ -70,10 +61,7 @@ _paths = {
 def main(args):
     logging.debug('args: %s', args)
 
-    ROOT.EnableImplicitMT()
-
-    # Get the lepton fake rates
-    frHelper = FRhelper(_paths["FR"][args.year])
+    if(args.multithread): ROOT.EnableImplicitMT()
 
     # Get the Events tree
     df = ROOT.RDataFrame('Events', args.fname_in)
@@ -83,7 +71,19 @@ def main(args):
         return 0
 
     # Load external C/C++ functions
-    ROOT.gInterpreter.Load('../data_driven_MC/ext/cConstants_cc.so')
+    err = ROOT.gInterpreter.Load('../data_driven_MC/ext/FakeRates_cpp.so')
+    if(err!=0):
+        logging.critical('Failure loading FakeRates_cpp.so')
+        return 2
+    logging.debug('Loaded FakeRates_cpp.so')
+    ok  = ROOT.gInterpreter.Declare('#include "../data_driven_MC/include/FakeRates.h"')
+    if(not ok): return 2
+    logging.debug('Included FakeRates.h')
+
+    # Initialize helper objects (lepton fake rates)
+    lepFR_file = _paths["FR"][args.year]
+    logging.info('lep FR file: %s', lepFR_file)
+    ROOT.gInterpreter.Declare('FakeRates frHelper("%s");' %(lepFR_file))
 
     # Run the analysis
     status = produce(df, args)
@@ -101,6 +101,7 @@ def parse_args():
     parser.add_argument('-o', '--output', default='ZX.root', dest='fname_out', metavar='FILE', help='Default: %(default)s')
     parser.add_argument('-y', '--year', default='2018', help='Year and possibly era (e.g. "2018", "2022preEE", ...). Default: %(default)s')
     parser.add_argument(      '--list', dest='list_columns', action='store_true', help='List the columns present in the input file and exit')
+    parser.add_argument(      '--mt', dest='multithread', action='store_true', help='Enable ROOT implicit multithread (output entries will not be ordered)')
     parser.add_argument('--log', dest='loglevel', metavar='LEVEL', default='WARNING', help='Level for the python logging module. Can be either a mnemonic string like DEBUG, INFO or WARNING or an integer (lower means more verbose).')
 
     args = parser.parse_args()
@@ -111,11 +112,43 @@ def produce(df, args):
     # Preliminary cuts: are we in the CR?
     logging.info('Total events: %d', df.Count().GetValue())
     df = df.Filter('ZLLbestSSIdx >= 0', 'has_ZLL_SS')
+    lepZZ = ['Z%dl%d' %(Z,l) for Z in (1,2) for l in (1,2)] # names of the leptons in the ZZ
 
     # Aliases
     df = df.Define('ZZ_mass'  , 'ZLLCand_mass[ZLLbestSSIdx]')
     df = df.Define('ZZ_Z1mass', 'ZLLCand_Z1mass[ZLLbestSSIdx]')
     df = df.Define('ZZ_Z2mass', 'ZLLCand_Z2mass[ZLLbestSSIdx]')
+    df = df.Define('ZZ_Z1flav', 'ZLLCand_Z1flav[ZLLbestSSIdx]')
+    df = df.Define('ZZ_Z2flav', 'ZLLCand_Z2flav[ZLLbestSSIdx]')
+
+    for l in lepZZ:
+        df = df.Define('%s_Idx' %(l), 'ZLLCand_%sIdx[ZLLbestSSIdx]' %(l))
+
+    # Intermediates
+    df = df.Define('FSLFO', 'get_FSLFO(ZZ_Z1flav, ZZ_Z2flav)')
+    df = df.Define('fs_ROS_SS', 'get_fs_ROS_SS(FSLFO)')
+
+    # TODO split by lepton flavour
+    # TODO heavy lifting in C/C++
+    lepFR_w_names = []
+    for l in lepZZ:
+        name  = 'weight_FR_%s'    %(l)
+        vname = 'weight_FRval_%s' %(l)
+        ename = 'weight_FRunc_%s' %(l)
+        FRargs = 'Lepton_pt[{0}], Lepton_eta[{0}], Lepton_pdgId[{0}]'.format(l+'_Idx')
+        df = df.Define(name , 'frHelper.getFR(%s)'%(FRargs))
+        df = df.Define(vname, '%s.first'  %(name))
+        df = df.Define(ename, '%s.second' %(name))
+        df = df.Vary(vname, 'ROOT::RVecF{{ {0}-{1}, {0}+{1} }}'.format(vname, ename), ['Down', 'Up'], 'fake_l')
+        lepFR_w_names.append(vname)
+
+    df = df.Define('weight_FRval_Z1', 'weight_FRval_Z1l1*weight_FRval_Z1l2')
+    df = df.Define('weight_FRval_Z2', 'weight_FRval_Z2l1*weight_FRval_Z2l2')
+
+    wFR_def = '*'.join(lepFR_w_names)
+    logging.debug(wFR_def)
+    df = df.Define('weight_FR', wFR_def)
+    df = df.Define('weight', 'overallEventWeight * fs_ROS_SS * weight_FR')
 
     # TEMP
     df = df.Define('DiJet_mass', '101')
@@ -125,9 +158,19 @@ def produce(df, args):
         .Redefine('nCleanedJetsPt30_jesUp', '(Char_t)(nCleanedJetsPt30+(Char_t)1)')
 
     # SYSTEMATICS
-    df = df.Vary('nCleanedJetsPt30', 'ROOT::RVecC{nCleanedJetsPt30_jesDn, nCleanedJetsPt30_jesUp}', ['dn', 'up'], 'jes')
-    h_njets_centr = df.Histo1D("nCleanedJetsPt30")
-    h_njets_systs = VariationsFor(h_njets_centr)
+    systs = []
+    df = df.Vary('nCleanedJetsPt30', 'ROOT::RVecC{nCleanedJetsPt30_jesDn, nCleanedJetsPt30_jesUp}', ['Down', 'Up'], 'jes')
+    systs.append(VariationsFor(df.Histo1D("nCleanedJetsPt30")))
+    systs.append(VariationsFor(df.Histo1D("weight_FR")))
+
+    for Z in (1,2):
+        systs.append(VariationsFor(df.Histo1D('weight_FRval_Z%d'%(Z))))
+    for l in lepZZ:
+        systs.append(VariationsFor(df.Histo1D('weight_FRval_%s'%(l))))
+
+    systs.append(VariationsFor(df.Histo1D("weight")))
+    h_logw = df.Define("log_weight", "log(weight)").Histo1D("log_weight")
+    systs.append(VariationsFor(h_logw))
 
     # CUT 1 fiducial region
     df = df.Filter(CUTS['fid_region'], 'fid_region')
@@ -153,9 +196,8 @@ def produce(df, args):
     # Write debug histograms
     tf = ROOT.TFile("ZX_debug.root", "RECREATE")
     tf.cd()
-    h_njets_systs['nominal'].Write()
-    h_njets_systs['jes:up' ].Write('nCleanedJetsPt30_jes_up'  )
-    h_njets_systs['jes:dn' ].Write('nCleanedJetsPt30_jes_down')
+    for hdict in systs:
+        write_resultmap(hdict)
     tf.Close()
 
     return 0
