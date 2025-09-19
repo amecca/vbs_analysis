@@ -4,7 +4,7 @@ CXXFLAGS = -g -I. -m64 $(shell root-config --cflags) -I include
 LDFLAGS = $(shell root-config --libs) -lm -lGenVector
 CXX = g++
 
-EXTLIBS = ./ext/cConstants_cc.so ./ext/FinalStates_cc.so ./ext/bitops_cc.so ./ext/Discriminants_cc.so
+EXTLIBS = ./ext/cConstants_cc.so ./ext/FinalStates_cc.so ./ext/bitops_cc.so ./ext/Discriminants_cc.so ./ext/FakeRates_cpp.so
 
 VPATH = ./src/ ./include/
 
@@ -15,7 +15,6 @@ SRCPP_PLOTTER = run_plotter.cpp\
                 Tree.cpp\
                 Settings.cpp\
                 M4lZX.cpp\
-                FakeRates.cpp\
                 Category.cpp\
                 ZXVariables.cpp\
                 CMS_lumi.cpp\
@@ -28,13 +27,11 @@ SRCPP_YIELDS = run_yields.cpp\
 					Tree.cpp\
 					Settings.cpp\
 					M4lZX.cpp\
-					FakeRates.cpp\
 					Category.cpp\
 					ZXVariables.cpp\
 					CMS_lumi.cpp
 SRCPP_MAKEZX = run_makeZX.cpp\
 					Settings.cpp\
-					FakeRates.cpp\
 					Category.cpp\
 					candTree.cpp
 

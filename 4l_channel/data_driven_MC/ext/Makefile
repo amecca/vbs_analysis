@@ -1,4 +1,4 @@
-SRCS::=Discriminants.cc FinalStates.cc bitops.cc cConstants.cc setTDRStyle.cpp
+SRCS::=Discriminants.cc FinalStates.cc bitops.cc cConstants.cc setTDRStyle.cpp FakeRates.cpp
 OBJS::=$(patsubst %.cpp,%_cpp.so,$(patsubst %.cc,%_cc.so,$(SRCS)))
 INCLDIR::=../include
 

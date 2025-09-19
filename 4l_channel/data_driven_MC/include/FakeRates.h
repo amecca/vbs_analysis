@@ -17,8 +17,11 @@ class FakeRates
 
 public:
 	
-	FakeRates( TString );
-	~FakeRates();
+  FakeRates(): is_init(false){};
+  FakeRates(const TString&);
+  ~FakeRates();
+  void init(const TString&);
+
   float getFRval(float pt, float eta, int id) const;
   float getFRerr(float pt, float eta, int id) const;
   std::pair<float, float> getFR(float pt, float eta, int id) const;
@@ -27,10 +30,11 @@ public:
   }
 
 protected:
-  const TH1F* get_hist(float, int) const;
+  const TH1F* get_hist(float eta, int id) const;
 
 private:
-   std::unique_ptr<TH1F> h_m_EB, h_m_EE, h_e_EB, h_e_EE;
+  bool is_init;
+  TH1F *h_m_EB=nullptr, *h_m_EE=nullptr, *h_e_EB=nullptr, *h_e_EE=nullptr;
 };
 
 #endif

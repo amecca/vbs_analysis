@@ -1,37 +1,51 @@
 // Include classes
 #include "TGraphErrors.h"
-#include "FakeRates.h"
+#include "../include/FakeRates.h"
 
 using namespace std;
 
 // Helper
 TH1F* _h_from_tge(const TGraphErrors&);
 
+
 // Constructor
 //===============================================
-FakeRates::FakeRates( TString input_file_FR_name )
+FakeRates::FakeRates(const TString& input_file_FR_name)
+  : is_init(false)
 {
- 
-   auto input_file_FR = TFile::Open(input_file_FR_name);
+  init(input_file_FR_name);
+}
 
-   // for Christophe's FR files
-   auto g_m_EB = (TGraphErrors*)input_file_FR->Get("FR_SS_muon_EB");
-   auto g_m_EE = (TGraphErrors*)input_file_FR->Get("FR_SS_muon_EE");
-   auto g_e_EB = (TGraphErrors*)input_file_FR->Get("FR_SS_electron_EB");
-   auto g_e_EE = (TGraphErrors*)input_file_FR->Get("FR_SS_electron_EE");
 
-   h_m_EB.reset(_h_from_tge(*g_m_EB));
-   h_m_EE.reset(_h_from_tge(*g_m_EE));
-   h_e_EB.reset(_h_from_tge(*g_e_EB));
-   h_e_EE.reset(_h_from_tge(*g_e_EE));
+FakeRates::~FakeRates(){}
+
+
+// Inititalization
+void FakeRates::init(const TString& input_file_FR_name){
+  auto input_file_FR = TFile::Open(input_file_FR_name);
+  if(!input_file_FR->IsOpen()){
+    fprintf(stderr, "ERROR FakeRates: cannot open \"%s\"\n", input_file_FR->GetName());
+    delete input_file_FR;
+    return;
+  }
+
+  // for Christophe's FR files
+  auto g_m_EB = (TGraphErrors*)input_file_FR->Get("FR_SS_muon_EB");
+  auto g_m_EE = (TGraphErrors*)input_file_FR->Get("FR_SS_muon_EE");
+  auto g_e_EB = (TGraphErrors*)input_file_FR->Get("FR_SS_electron_EB");
+  auto g_e_EE = (TGraphErrors*)input_file_FR->Get("FR_SS_electron_EE");
+
+  h_m_EB = _h_from_tge(*g_m_EB);
+  h_m_EE = _h_from_tge(*g_m_EE);
+  h_e_EB = _h_from_tge(*g_e_EB);
+  h_e_EE = _h_from_tge(*g_e_EE);
+
+  input_file_FR->Close();
+  delete input_file_FR;
+
+  is_init = true;
 }
 //===============================================
-
-
-
-//======================
-FakeRates::~FakeRates() {}
-//======================
 
 
 
@@ -57,18 +71,19 @@ std::pair<float, float> FakeRates::getFR(float pt, float eta, int id) const{
 
 const TH1F* FakeRates::get_hist(float eta, int id) const{
   TH1F* h = nullptr;
+  if(!is_init) return h;
   unsigned int aid = abs(id);
   float aeta = fabs(eta);
 
   switch(aid){
   case 11:
-    h = (aeta < 1.479 ? h_e_EB : h_e_EE).get();
+    h = (aeta < 1.479 ? h_e_EB : h_e_EE);
     break;
   case 13:
-    h = (aeta < 1.2   ? h_m_EB : h_m_EE).get();
+    h = (aeta < 1.2   ? h_m_EB : h_m_EE);
     break;
   default:
-    std::cerr << Form("ERROR: unknown lepton id: %d\n", id);
+    fprintf(stderr, "ERROR: unknown lepton id: %d\n", id);
   }
   return h;
 }
@@ -81,6 +96,7 @@ TH1F* _h_from_tge(const TGraphErrors& g){
   std::vector<float> edges;  edges .reserve(n+1);
   std::vector<float> values; values.reserve(n+1);
   std::vector<float> errors; errors.reserve(n+1);
+  fprintf(stderr, "DEBUG (h_from_tge): converting %s (%d points)\n", g.GetName(), n);
 
   for(int i=0; i<n; ++i){
     float px = g.GetPointX(i);
@@ -93,30 +109,31 @@ TH1F* _h_from_tge(const TGraphErrors& g){
       // Check edge consistency with point errors
       float last = edges.back();
       if(px_ex - last > 1e-7)
-	std::cerr << Form("WARN (h_from_tge): edge discrepancy: last=%.3e, x-ex=%.3e (diff=%.3e)", last, px_ex, px_ex-last);
-      else // first bin
-	edges.push_back(px_ex);
-      edges.push_back(px + ex);
-      values.push_back(py);
-      errors.push_back(ey);
+	fprintf(stderr, "WARN (h_from_tge): edge discrepancy: last=%.3e, x-ex=%.3e (diff=%.3e)\n", last, px_ex, px_ex-last);
     }
+    else // first bin
+      edges.push_back(px_ex);
+    edges.push_back(px + ex);
+    values.push_back(py);
+    errors.push_back(ey);
   }
 
-  // allocate on the heap the result, which will be managed by an unique_ptr
+  // allocate on the heap the result
   TH1F* hp = new TH1F(g.GetName(), g.GetTitle(), n, edges.data());
-  TH1F h = *hp; // for convenience
+  TH1F& h = *hp; // for convenience
 
   h.SetDirectory(0); // ROOT deletes TH1 objects created while a TFile is open, when closing it
   for(int i=0; i<n; ++i){
-    // std::cout << Form("DEBUG: %d - y = %.3g +- %.3g\n", i+1, v, e)
+    // fprintf(stderr, "DEBUG: %d - y = %.3g +- %.3g\n", i+1, v, e)
     h.SetBinContent(i+1, values.at(i));
     h.SetBinError  (i+1, errors.at(i));
   }
   // Set the under/overflow value and error equal to the first/last bin - simplifies getFR
-  h.SetBinContent(0, values[0]);
-  h.SetBinError  (0, errors[0]);
-  h.SetBinContent(n+1, values[-1]);
-  h.SetBinError  (n+1, errors[-1]);
+  h.SetBinContent(0, values.front());
+  h.SetBinError  (0, errors.front());
+  h.SetBinContent(n+1, values.back());
+  h.SetBinError  (n+1, errors.back());
 
+  fprintf(stderr, "DEBUG (h_from_tge): returning new TH1F 0x%p (%i bins)\n", hp, hp->GetNbinsX());
   return hp;
 }
