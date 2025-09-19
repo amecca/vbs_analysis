@@ -23,7 +23,7 @@ from ZZAnalysis.NanoAnalysis.tools import setConf
 # - try to do stuff with importlib
 # - append the absolute path to "4l_channel/python/" to sys.path
 sys.path.append(os.path.realpath('../python'))
-from utils import TFileContext
+from utils import TFileContext, mkhist
 
 
 def main(args):
@@ -69,18 +69,18 @@ def analyze(df, args):
     futures = [] # <ROOT.RDF.RResultPtr>
     histograms = [] # <ROOT.TH1F>
 
-    def mkhist(*model_args, v=None, w='overallEventWeight'):
-        logging.debug('model_args: %s', model_args)
-        model = TH1DModel(*model_args)
-        return df.Histo1D(model, model.fName if v is None else v, w)
+    # Aliases
+    df = df.Alias('weight', 'overallEventWeight')
 
     # GenZZ_mass
-    # futures.append(df.Histo1D(TH1DModel('GenZZ_mass', '', 60,100,700), 'GenZZ_mass'))
-    futures.append(mkhist('GenZZ_mass', '', 60,100,700))
-    futures.append(mkhist('ZZCand_mass', '', 60,100,700))
+    futures.append(mkhist(df, 'GenZZ_mass', '', 60,100,700))
+    futures.append(mkhist(df, 'ZZCand_mass', '', 60,100,700))
+    futures.append(mkhist(df, 'nCleanedJetsPt30', '', 5,0,5))
 
     df = df.Define('ZZ_mass_diff', 'ZZCand_mass - GenZZ_mass')
-    futures.append(mkhist('ZZ_mass_diff', '', 60,-60,60))
+    futures.append(mkhist(df, 'ZZ_mass_diff', '', 60,-60,60))
+
+    # df = df.Define('test', '(FidDressedLeps[0].p4() + FidDressedLeps[0].p4()).M()')
 
     # futures.append(df.Histo1D(TH1DModel('ZZ_mass_diff', '', 60,100,700), 'ZZcand_mass - GenZZ_mass'))
     logging.info("Finished setting up the analysis")
