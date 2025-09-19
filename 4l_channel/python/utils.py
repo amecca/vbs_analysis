@@ -41,3 +41,14 @@ class Channel(Enum):
 
 def clamp(v, lo, hi):
     return min(max(v, lo), hi)
+
+
+def mkhist(df, *model_args, v=None, w='weight'):
+    '''
+    Wrapper around Histo1D that creates a TH1DModel with the name of the column
+    and the default value for the weight
+    '''
+    # logging.debug('model_args: %s', model_args)
+    model = TH1DModel(*model_args)
+    column = model.fName if v is None else v
+    return df.Histo1D(model, column, w)
