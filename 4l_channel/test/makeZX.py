@@ -80,15 +80,33 @@ def main(args):
     if(not ok): return 2
     logging.debug('Included FakeRates.h')
 
+    err = ROOT.gInterpreter.Load('../data_driven_MC/ext/pyhelpers_cc.so')
+    if(err!=0):
+        logging.critical('Failure loading pyhelpers_cc.so')
+        return 2
+    logging.debug('Loaded pyhelpers_cc.so')
+    ok  = ROOT.gInterpreter.Declare('#include "../data_driven_MC/include/pyhelpers.h"')
+    if(not ok): return 2
+    logging.debug('Included pyhelpers.h')
+
     # Initialize helper objects (lepton fake rates)
     lepFR_file = _paths["FR"][args.year]
     logging.info('lep FR file: %s', lepFR_file)
     ROOT.gInterpreter.Declare('FakeRates frHelper("%s");' %(lepFR_file))
+    ROOT.gInterpreter.Calc(r'printf("DEBUG: frHelper = %p\n", &frHelper);')
+
+    spline_file = _paths["KDconstants"]["13TeV"]
+    logging.info('spline file: %s', spline_file)
+    ROOT.gInterpreter.Declare('auto splineKD = dynamic_cast<TSpline*>( get_from_TFile("%s", "%s") );'%(spline_file, 'sp_gr_varReco_Constant_Smooth'))
+    ROOT.gInterpreter.Calc(r'printf("DEBUG: splineKD = %p\n", splineKD);')
 
     # Run the analysis
     status = produce(df, args)
 
     logging.info('wrote tree to to "%s"', args.fname_out)
+
+    # Cleanup
+    ROOT.gInterpreter.Calc(r'delete splineKD;')
 
     return status
 
@@ -183,6 +201,9 @@ def produce(df, args):
     df = df.Define('c_Mela2j', 'getDVBF2jetsConstant(ZZ_mass)')
     df = df.Define('WP_VBF2j', 'getDVBF2jetsWP(ZZ_mass, 0)')
     columns_out.extend(['c_Mela2j', 'WP_VBF2j'])
+
+    df = df.Define('c_mzz', '{c_constant}*splineKD->Eval(ZZ_mass)'.format(c_constant=_c_constant))
+    systs.append(VariationsFor(df.Histo1D("c_mzz")))
     # TODO work here
 
     logging.info("Finished setting up the analysis")
