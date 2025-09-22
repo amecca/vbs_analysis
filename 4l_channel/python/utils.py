@@ -52,3 +52,13 @@ def mkhist(df, *model_args, v=None, w='weight'):
     model = TH1DModel(*model_args)
     column = model.fName if v is None else v
     return df.Histo1D(model, column, w)
+
+
+def parse_syst_name(name):
+    s = name.split('_')
+    d = {
+        'var' : '_'.join(s[:-2]),
+        'syst': s[-2],
+        'updn': s[-1]
+        }
+    return d
